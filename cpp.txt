@@ -1,0 +1,236 @@
+#==============================================================
+# vocabulary
+#==============================================================
+#------------------------------------------------------
+# variable
+#------------------------------------------------------
+int x;                      # definition
+x = 5;                      # assignment
+x = y;                      # x is l-value, y is r-value
+int x = 5;                  # initialization
+*p;                         # (*) dereference operator
+&i;                         # (&) address-of operator
+# duration vs scope
+A variable’s scope determines where the variable is accessible.
+Duration defines when a variable is created and destroyed.
+Local variables have block scope
+Local variables have automatic duration, which means they are:
+    + created at the point of definition
+    + destroyed at the end of the block in which they are defined
+
+#------------------------------------------------------
+# function
+#------------------------------------------------------
+int add(int x, int y);      # declaration
+int add(int x, int y) {...} # definition
+
+
+#==============================================================
+# initialization
+#==============================================================
+std::string s{}              # Value initialization
+std::string s("hello")       # Direct initialization
+std::string s = "hello"      # Copy initialization
+std::string s{'a', 'b', 'c'} # List initialization
+char a[3] = {'a', 'b'}       # Aggregate initialization
+char& c = a[0]               # Reference initialization
+
+
+#==============================================================
+# sign
+#==============================================================
+Never use unsigned integers unless there is a good reason for it.
+Do not use unsigned types to say a number will never be negative.
+Instead, use assertions for this.
+
+
+#==============================================================
+# constant variable
+#==============================================================
+const int toto = 5;
+constexpr int toto = tutu;  # ensures constant is a compile-time constant
+#define MYCONST 5           # bad practice because debugger will display MYCONST instead of 5
+                            # also, this is not limited in the scope where it is declared
+const int myConst=5;        # better practice, can be added in a header file with a namespace
+
+
+#==============================================================
+# operator
+#==============================================================
+-1/2    # -1 before c++11; 0 from c++11
+
+
+#==============================================================
+# global variable (avoid them !)
+#==============================================================
+Static duration, which means they are created when the program starts and are destroyed when it ends.
+Global scope, which means they are visible until the end of the file in which they are declared.
+A local variable hides a global variable: use g_<my_glob_var> to avoid it.
+static int g_x;             # g_x is static, and can only be used within this file
+extern double g_y(9.8);     # g_y is external, and can be used by other files
+extern int g_z;             # forward declaration for global variable defined elsewhere
+By default, non-const variables declared outside of a block are assumed to be external.
+However, const variables declared outside of a block are assumed to be internal.
+
+
+#==============================================================
+# static duration variable (static variable)
+#==============================================================
+Should be prefixed with s_.
+The static keyword can also be applied to variables declared inside a block.
+Change duration of a variable from automatic to static (or fixed).
+
+
+#==============================================================
+# namespace
+#==============================================================
+Good practice.
+using namespace Foo;    # avoids adding Foo:: in front of each function in the whole block
+
+
+#==============================================================
+# type conversion
+#==============================================================
+double d(4);            # example of implicit type conversion,
+                        # can have surprise on signed/unsigned unsafe conv
+float f = float(i1)/i2; # C-style cast, not checked by compiler, should be avoided
+float f = static_cast<float>(i1) / i2;  # C++ style, checked a compile-time, should be used
+
+
+#==============================================================
+# enum
+#==============================================================
+enumerators are placed into the same namespace as the enumeration,
+an enumerator name can’t be used in multiple enumerations within the same namespace
+
+C++11 defines a new concept, the enum class (also called a scoped enumeration),
+which makes enumerations both strongly typed and strongly scoped. To make an
+enum class, we use the keyword class after the enum keyword. Here’s an example:
+    enum class Color // "enum class" defines this as an scoped enumeration instead of a standard enumeration
+    {
+        RED, // RED is inside the scope of Color
+        BLUE
+    };
+    enum class Fruit
+    {
+        BANANA, // BANANA is inside the scope of Fruit
+        APPLE
+    };
+    Color color = Color::RED; // note: RED is not directly accessible any more, we have to use Color::RED
+    Fruit fruit = Fruit::BANANA; // note: BANANA is not directly accessible any more, we have to use Fruit::BANANA
+    if (color == fruit) // compile error here, as the compiler doesn't know how to compare different types Color and Fruit
+
+
+#==============================================================
+# typedef
+#==============================================================
+typedef double distance_t;  # C style: define distance_t as an alias for type double
+using distance_t = double;  # C++11: define distance_t as an alias for type double
+
+
+#==============================================================
+# struct
+#==============================================================
+struct Employee
+{
+    short id;
+    int age;
+    double wage;
+};
+Employee joe = { 1, 32, 60000.0 }; // joe.id = 1, joe.age = 32, joe.wage = 60000.0
+
+
+#==============================================================
+# random
+#==============================================================
+#include <cstdlib> // for rand() and srand()
+srand(5323); // set initial seed value to 5323
+a = rand();
+
+
+#==============================================================
+# pointers
+#==============================================================
+int value = 5;
+int *ptr = &value;  // initialization with ptr = &value;
+*ptr = 7; // *ptr is the same as value, which is assigned 7
+std::cout << value; // prints 7
+
+#------------------------------------------------------
+# fixed array VS pointer
+#------------------------------------------------------
+A fixed array knows how long the array it is pointing to is.
+A pointer to the array does not.
+    int array[5] = { 9, 7, 5, 3, 1 };
+    std::cout << sizeof(array) << '\n'; // will print sizeof(int) * array length
+    int *ptr = array;
+    std::cout << sizeof(ptr) << '\n'; // will print the size of a pointer
+Address of a pointer: memory address of the pointer variable.
+Address of the array: returns a pointer to the entire array.
+
+#------------------------------------------------------
+# memory allocation (C++ style)
+#------------------------------------------------------
+int *ptr = new int; // allocate memory
+delete ptr; // return memory back to operating system
+
+int *array = new int[length]; // use array new.  Note that length does not need to be constant!
+delete[] array; // use array delete to deallocate array
+
+int **array = new int*[10]; // allocate an array of 10 int pointers — these are our rows
+for (int count = 0; count < 10; ++count)
+    array[count] = new int[5]; // these are our columns
+for (int count = 0; count < 10; ++count)
+    delete[] array[count];
+delete[] array; // this needs to be done last
+
+
+#==============================================================
+# references
+#==============================================================
+A reference is a type of C++ variable that acts as an alias to another variable.
+References are declared by using an ampersand (&) between the reference type and the variable name:
+    int value = 5; // normal integer
+    int &ref = value; // reference to variable value
+    value = 6; // value is now 6
+    ref = 7; // value is now 7
+    cout << &value; // prints 0012FF7C
+    cout << &ref; // prints 0012FF7C
+In this context, the ampersand does not mean “address of”, it means “reference to”.
+
+Even though they are not declared using the const keyword, references are treated as being const,
+meaning that they must be initialized and once initialized can not be reassigned.
+
+Most often, references are used as function parameters because they allow us to
+pass a parameter to a function without making a copy of the value itself (we
+just copy the reference).
+
+In general, it is a good idea to avoid using void pointers unless absolutely necessary
+
+
+#==============================================================
+# foreach loop
+#==============================================================
+For-each doesn’t work with pointers to an array.
+For-each work with fixed size array, vectors and other list-like structures.
+    int array[5] = { 9, 7, 5, 3, 1 };
+    for (auto &element: array) // (&) makes element a reference to the actual array element, preventing a copy from being made
+      std::cout << element << ' ';
+
+
+#==============================================================
+# std::array and std::vector
+#==============================================================
+# array
+similar to fixed size array with more features:
+    #include <array>
+    #include <algorithm> // for std::sort
+    std::array<double, 5> myarray { 9.0, 7.2, 5.4, 3.6, 1.8 };
+    std::cout << "length: " << myarray.size();
+    std::sort(myarray.begin(), myarray.end()); // sort the array forwards
+
+# vector
+std::vector provides dynamic array functionality that handles its own memory management:
+    std::vector<int> array { 9, 7, 5 };
+    std::cout << "The length is: " << array.size() << '\n';
+    array.resize(5); // set size to 5

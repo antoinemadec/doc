@@ -1,0 +1,23 @@
+git branch <branch>             # create branch
+git branch -f <branch> <commit> # reassign branch to a commit
+
+git checkout <commit, branch>   # move HEAD
+git checkout -b <branch>        # git branch <branch>; git checkout <branch>
+
+git merge <branch>              # merge <branch> on HEAD
+git rebase (-i) <branch>        # rebase HEAD on <branch>; -i is for interactive, it allows the user to pick the commit and reorder them
+git cherry-pick c0 c1 ...       # apply c0 c1 ... on HEAD
+git commit --ammend             # combine the staged changes with the previous commit and replace the previous commit with the resulting snapshot
+
+git reset <commit, branch>      # rewrite history by resettign current branch to previous commit
+git revert <commit>             # add extra commit to revert previous commit
+
+
+#---------------------------------------------------------------
+# remote
+#---------------------------------------------------------------
+git fetch URL                   # downloads commits that the remote has but are missing from our local repository. updates where our remote branches point (for instance, o/master)
+                                # git fetch, however, does not change anything about your local state. wont make local work reflect the state of the remote
+git pull origin master          # git fetch URL; git merge origin
+git pull --rebase origin master # git fetch URL; git rebase origin
+git pull origin master          # push master on origin and update origin ref in local repo
