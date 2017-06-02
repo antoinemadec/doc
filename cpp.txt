@@ -21,8 +21,9 @@ Local variables have automatic duration, which means they are:
 #------------------------------------------------------
 # function
 #------------------------------------------------------
-int add(int x, int y);      # declaration
-int add(int x, int y) {...} # definition
+int add(int x, int y);      # declaration; parameters are x and y
+int add(int x, int y) {...} # definition; parameters are x and y
+add(6,17);  # calling foo with arguments 6 and 17
 
 
 #==============================================================
@@ -234,3 +235,62 @@ std::vector provides dynamic array functionality that handles its own memory man
     std::vector<int> array { 9, 7, 5 };
     std::cout << "The length is: " << array.size() << '\n';
     array.resize(5); // set size to 5
+
+
+#==============================================================
+# function
+#==============================================================
+Best practice is to declare the default parameter in the forward declaration
+and not in the function definition, as the forward declaration is more likely
+to be seen by other files (particularly if it’s in a header file).
+
+Arguments passing can be done: by value, by reference or by address.
+
+#------------------------------------------------------
+# passing args by value
+#------------------------------------------------------
+Copy full variable, original variable cannot be changed:
+    void foo(int x, int y)
+    {
+    }
+    foo(6, 7);
+
+#------------------------------------------------------
+# passing args by reference
+#------------------------------------------------------
+Cannot pass literals. Good practice: input=const.
+Impossible to tell from the function call whether the argument may change.
+To be used with struct/class of when changing arg is needed.
+    void foo(const bigStruct &x, int &y)
+    {
+    }
+    foo(a, b);
+
+#------------------------------------------------------
+# passing args by address
+#------------------------------------------------------
+Rule: Prefer pass by reference to pass by address whenever applicable.
+Since pointer have to be checked (!=nullptr ?) and that dereferencing is slow.
+    void foo(int *ptr)
+    {
+        *ptr = 6;
+    }
+    int value = 5;
+    foo(&value);
+
+#------------------------------------------------------
+# function pointers
+#------------------------------------------------------
+Unlike fundamental types, C++ will implicitly convert a function into a
+function pointer if needed (so you don’t need to use the address-of operator
+(&) to get the function’s address).
+    // function prototypes
+    int foo();
+    double goo();
+    int hoo(int x);
+    // function pointer assignments
+    int (*fcnPtr1)() = foo; // okay
+    int (*fcnPtr2)() = goo; // wrong -- return types don't match!
+    double (*fcnPtr4)() = goo; // okay
+    fcnPtr1 = hoo; // wrong -- fcnPtr1 has no parameters, but hoo() does
+    int (*fcnPtr3)(int) = hoo; // okay
