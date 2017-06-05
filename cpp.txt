@@ -25,6 +25,15 @@ int add(int x, int y);      # declaration; parameters are x and y
 int add(int x, int y) {...} # definition; parameters are x and y
 add(6,17);  # calling foo with arguments 6 and 17
 
+#------------------------------------------------------
+# class
+#------------------------------------------------------
+class member: variable or function
+class variable
+class function/method: function
+access specifiers: private, public or pretected
+encapsulation: keeping the details about how an object is implemented hidden away from users of the object
+
 
 #==============================================================
 # initialization
@@ -294,3 +303,125 @@ function pointer if needed (so you don’t need to use the address-of operator
     double (*fcnPtr4)() = goo; // okay
     fcnPtr1 = hoo; // wrong -- fcnPtr1 has no parameters, but hoo() does
     int (*fcnPtr3)(int) = hoo; // okay
+
+#------------------------------------------------------
+# ellipsis
+#------------------------------------------------------
+#include <cstdarg> // needed to use ellipsis
+// The ellipsis must be the last parameter
+// count is how many additional arguments we're passing
+double findAverage(int count, ...)
+{
+    double sum = 0;
+
+    // We access the ellipsis through a va_list, so let's declare one
+    va_list list;
+
+    // We initialize the va_list using va_start.  The first parameter is
+    // the list to initialize.  The second parameter is the last non-ellipsis
+    // parameter.
+    va_start(list, count);
+
+    // Loop through all the ellipsis arguments
+    for (int arg=0; arg < count; ++arg)
+         // We use va_arg to get parameters out of our ellipsis
+         // The first parameter is the va_list we're using
+         // The second parameter is the type of the parameter
+         sum += va_arg(list, int);
+
+    // Cleanup the va_list when we're done.
+    va_end(list);
+
+    return sum / count;
+}
+
+
+#==============================================================
+# errror handling
+#==============================================================
+#include <cstdlib>  // for exit()
+
+std::cerr           // print on stderr
+
+assert(has_to_be_true && "optionnal message");
+#define NDEBUG      // ignore asserts till end of file to gain performance
+
+static_assert(sizeof(long) == 8, "long must be 8 bytes");   // evaluated at compile-time
+
+
+#==============================================================
+# classes
+#==============================================================
+class member are private by default
+Rule: Make member variables private, and member functions public, unless you have a good reason not to.
+Rule: variable should start with m_
+
+When a function has access to the private members of a class, it can access the
+private members of any object of that class type that it can see.
+
+Benefit of encapsulated classes:
+    - easier to use and reduce the complexity of your programs
+    - help protect your data and prevent misuse
+    - easier to change
+    - easier to debug
+
+
+Constructors:
+    - should always have the same name as the class
+    - have no return type (not even void)
+
+Initializing values is prefered to assign them in the constructor,
+besides it is the only way for const:
+    Class Something
+    {
+    private:
+        const int m_value1;
+        double m_value2;
+        char m_value3;
+        float m_value4;
+    public:
+        Something(int value1, double value2, char value3='c', float value4=34.6) // this line already has a lot of stuff on it
+            : m_value1(value1), // one per line, commas at end of each line
+            m_value2(value2),
+            m_value3(value3),
+            m_value4(value4)
+        {
+        }
+    };
+
+Destructors:
+    - must have the same name as the class, preceded by a tilde (~)
+    - can not take arguments
+    - has no return type
+
+Simple simple(1);                   # allocate object on the stack
+Simple *pSimple = new Simple(2);    # allocate object dynamically
+...
+delete pSimple;
+
+To chain objects and do calc.add(5).sub(3).mult(4), you need to return *this:
+    Calc& add(int value) { m_value += value; return *this; }
+
+Static can be used to share a variable with all classes objects.
+Static member functions can also be used, they don't have *this pointer.
+
+#------------------------------------------------------
+# inheritance
+#------------------------------------------------------
+Example:
+    class Derived: public Base
+    {
+      public:
+        double m_cost;
+
+        Derived(double cost=0.0, int id=0)
+          : Base(id), // Call Base(int) constructor with value id!
+          m_cost(cost)
+      {
+      }
+
+        double getCost() const { return m_cost; }
+    };
+
+private member is only accessible by the class and "friends"
+protected member is accessible by class and derived classes
