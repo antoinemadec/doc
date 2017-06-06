@@ -1,0 +1,83 @@
+#==============================================================
+# vocabulary
+#==============================================================
+#------------------------------------------------------
+# class
+#------------------------------------------------------
+attribute: variable
+method: function
+
+
+#==============================================================
+# class
+#==============================================================
+#------------------------------------------------------
+# static attribute and method, constructor, destructor
+#------------------------------------------------------
+class Foo:
+    __counter = 0     # static and private attibute
+
+    def __init__(self, name):
+        __counter += 1
+        self.name = name
+
+    def __del__(self):
+        print("Obj has been destroyed")
+
+    @staticmethod
+    def static_method():
+        print("I am a static method")
+
+    @classmethod
+    def get_counter(cls):
+        return cls.__counter
+
+Foo.static_method()
+print(Foo.get_counter)
+x = Foo("x")
+print(Foo.get_counter)
+del x
+print(Foo.get_counter)
+
+#------------------------------------------------------
+# properties
+#------------------------------------------------------
+# The pythonic ways is to use properties rather than getter and
+# setters as it is easier to use and to maintain
+class P:
+    def __init__(self,x):
+        self.x = x
+
+    @property
+    def x(self):
+        return self.__x
+
+    @x.setter
+    def x(self, x):
+        if x < 0:
+            self.__x = 0
+        elif x > 1000:
+            self.__x = 1000
+        else:
+            self.__x = x
+
+p1 = P(1001)
+p1.x    # 1000
+p1.x = -12
+p1.x    # 0
+
+#------------------------------------------------------
+# inheritance & overriding
+#------------------------------------------------------
+class Person:
+    def __init__(self, first, last):
+        self.firstname = first
+        self.lastname = last
+
+    def __str__(self):
+        return self.firstname + " " + self.lastname
+
+class Employee(Person):
+    def __init__(self, first, last, staffnum):
+        super().__init__(first, last)
+        self.staffnumber = staffnum
