@@ -1,0 +1,98 @@
+#===============================================================
+# data types
+#===============================================================
+bit [31:0] b32;     // 2-state, unsigned
+reg [31:0] r32;     // 4-state, unsigned
+logic [31:0] l32;   // 4-state, unsigned (reg and logic are synonym
+int i;              // 2-state, signed, 32b
+integer i;          // 4-state, signed, 32b
+byte b8;            // 4-state, signed, 8b
+shortint s;         // 4-state, signed, 16b
+longint l;          // 4-state, signed, 64b
+time t;             // 4-state, unsigned, 64b
+real r;
+
+$isunknown(my_var); // return 1 if one bit is X or Z
+
+#------------------------------------------------------
+# fixed-size arrays
+#------------------------------------------------------
+int arr[16];
+arr = '{9, 4, default:-1};
+for (int i=0; i<$size; i++) // both are equivalent
+foreach (arr[j])            // both are equivalent
+
+# multidimensional
+int mult[2][3];
+mult = '{'{0,1,2}, '{2,3,4}};
+foreach (mult[i,j])             // both are equivalent
+foreach (mult[i])               // both are equivalent
+    foreach (mult[,j])
+
+# packed array
+bit [3:0] [7:0] barray [2];     // access [2], then [3:0], then [7:0]
+barray[1]       = 32'hdeadbeef;
+barray[1][0]    = 8'hff;
+barray[1][0][7] = 1'b1;
+
+#------------------------------------------------------
+# dynamic arrays
+#------------------------------------------------------
+int dyn[];
+dyn = new[5];   // allocate 5 new elements, old values are lost
+dyn = new[100]; // allocate 100 new elements and copy
+dyn.delete();
+
+#------------------------------------------------------
+# queues
+#------------------------------------------------------
+# no performance hit of dyn array that has to allocate a new array an copy the
+# entire content
+
+int q[$] = {0,1,3};
+i = q[$];           // i=3
+q.insert(4,2);      // q={0,1,4,3}
+q.push_front(9);    // q={9,0,1,4,3}
+j= q.pop_back();    // j=3; q={9,0,1,4]
+
+#------------------------------------------------------
+# associative arrays
+#------------------------------------------------------
+# model extremely large address space arrays
+bit [31:0] assoc[int];
+assoc.first(idx);   // get 1st index
+assoc.next(idx);    // get 2nd index
+assoc.delete(idx);  // delete idx element
+
+
+#------------------------------------------------------
+# array methods
+#------------------------------------------------------
+# reduction methods
+int i;
+bit arr [10] = '{1, 1, 1, default:0};
+$display("%0d", arr.sum);                   // 1, since on 1 bit
+$display("%0d", arr.sum with(int'(item)));  // 3, since on 32 bits
+i = arr.sum;                                // 3, since on 32 bits (i is 32bits)
+
+# other reduction are product, and, or, xor
+
+# locator methods
+int arr[4] = '{4,2,4,0};
+int q[$];
+q = arr.min();      // {0}
+q = arr.max();      // {4}
+q = arr.unique();   // {4,2,0}
+
+q = arr.find with (item > 0);           // {4,2,4}
+q = arr.find_first with (item < 3);     // {2}
+q = arr.find_last  with (item > 4);     // {} not found
+q = arr.find_index with (item > 3);     // {0,2}
+q = arr.find_first_index with (item<3); // {1}
+q = arr.find_last_index with (item<3);  // {2}
+
+# sorting
+arr.reverse();
+arr.sort();
+arr.rsort();
+arr.shuffle();
