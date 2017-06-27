@@ -64,7 +64,6 @@ assoc.first(idx);   // get 1st index
 assoc.next(idx);    // get 2nd index
 assoc.delete(idx);  // delete idx element
 
-
 #------------------------------------------------------
 # array methods
 #------------------------------------------------------
@@ -96,3 +95,22 @@ arr.reverse();
 arr.sort();
 arr.rsort();
 arr.shuffle();
+
+#------------------------------------------------------
+# streaming operators
+#------------------------------------------------------
+bit j[4] = '{8'ha, 8'hb, 8'hc, 8'hd};
+int h;
+h = { >> {j} }; // 0a0b0c0d
+h = { << {j} }; // 0d0c0b0a
+
+#------------------------------------------------------
+# enum
+#------------------------------------------------------
+typedef enum {BAD=0, FIRST, SECOND=3, THIRD} ordinal_e; // must always start at 0
+ordinal_e position;
+
+# first, last, next and prev routines can be used on enum types
+
+# $cast can be used to convert int to enum and enum to int (type checking),
+# or static cast ordinal_e'(x) (no type checking)
