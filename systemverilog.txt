@@ -114,3 +114,36 @@ ordinal_e position;
 
 # $cast can be used to convert int to enum and enum to int (type checking),
 # or static cast ordinal_e'(x) (no type checking)
+
+
+#===============================================================
+# procedural statement and routines
+#===============================================================
+# function can accept fork; my_task(); join_none; in systemverilog
+
+#------------------------------------------------------
+# ref
+#------------------------------------------------------
+# function and task can use ref args to copy pointer on the stack rather than copying an array
+function void print_checksum (const ref bit [31:0] a[]);
+
+# ref can only be used in routines with automatic storage
+
+# using ref on a task output make a change on that output visible before task returns,
+# useful for forks
+
+# function can return an array but needs a typedef...
+typedef int fixed_array5[5];
+function fixed_array5 init(int start);
+
+# ... easiest way is to use ref
+function void init(ref int f[5], input int start);
+
+#------------------------------------------------------
+# automatic
+#------------------------------------------------------
+# as previously said, by default, all vars are static.
+# use automatic to be able to call the same task concurently.
+# it will fixed initialization bugs as well
+automatic task foo;
+  logic [7:0] b = add << 2; // bug if not automatic
