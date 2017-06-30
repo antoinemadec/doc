@@ -1,3 +1,5 @@
+# vim: ft=conf
+
 #===============================================================
 # data types
 #===============================================================
@@ -147,3 +149,56 @@ function void init(ref int f[5], input int start);
 # it will fixed initialization bugs as well
 automatic task foo;
   logic [7:0] b = add << 2; // bug if not automatic
+
+
+#===============================================================
+# connecting the testbench and design
+#===============================================================
+#------------------------------------------------------
+# interface construct
+#------------------------------------------------------
+# interface signals should always be driven with non-blocking assignments
+# interfaces should always be declared outside a module
+# interfaces can only feature instances of other interfaces. No modules
+#
+# example:
+interface arb_if(input bit clk);
+  logic [1:0] grant, request;
+  logic       rst;
+endinterface
+
+module arb (arb_if arbif);
+...
+always @(posedge arbif.clk or posedge arbif.rst)
+begin
+if (arbif.rst)
+arbif.grant <= 2'b00;
+else
+arbif.grant <= next_grant;
+...
+end
+endmodule
+
+module top;
+  bit clk;
+  always #5 clk = ~clk;
+  arb_if arbif(clk);
+  arb a1 (arbif);
+  test t1(arbif);
+endmodule : top
+
+# modport example:
+interface arb_if(input bit clk);
+  logic [1:0] grant, request;
+  logic rst;
+  modport TEST (output request, rst,
+                input grant, clk);
+  modport DUT (input request, rst, clk,
+               output grant);
+  modport MONITOR (input request, grant, rst, clk);
+endinterface
+
+module arb (arb_if.DUT arbif);
+...
+module test (arb_if.TEST arbif);
+...
