@@ -202,3 +202,51 @@ module arb (arb_if.DUT arbif);
 ...
 module test (arb_if.TEST arbif);
 ...
+
+# clocking block:
+#   - sync signals
+#   - test bench won't change when clock is modified
+interface arb_if(input bit clk);
+  logic [1:0] grant, request;
+  logic rst;
+
+  clocking cb @(posedge clk);
+    output request;
+    input grant;
+  endclocking
+
+  modport TEST (output rst,
+                clocking cb);
+  modport DUT (input request, rst, clk,
+               output grant);
+  modport MONITOR (input request, grant, rst, clk);
+endinterface
+
+module test(arb_if.TEST arbif);
+  initial
+  begin
+    arbif.cb.request <= 0;
+    @arbif.cb;
+    $display("grant=%0d", arb_if.cb.grant);
+  end
+endmodule
+
+#------------------------------------------------------
+# program
+#------------------------------------------------------
+# separate testbench timing from RTL timing to reduce race conditions
+# cannot have hierarchy of instances of modules, interfaces or other programs
+program automatic test (arb_if.TEST arbif);
+  ...
+  initial begin
+    arbif.cb.request <= 2'b01;
+    $display("Drove req=2'b01");
+    repeat (2) @arbif.cb;
+    if (arbif.cb.grant != 2'b01)
+      $display("grant !=2'b01");
+  end
+endprogram
+
+# test should contained in 1 unique program
+# use OOP to build dynamic hierarchical testbench instead of module
+# should always use automatic to mimic C
