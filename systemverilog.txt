@@ -236,6 +236,8 @@ endmodule
 #------------------------------------------------------
 # separate testbench timing from RTL timing to reduce race conditions
 # cannot have hierarchy of instances of modules, interfaces or other programs
+# cannot have always @
+# simulation end when last statement of initial block inside program is done
 program automatic test (arb_if.TEST arbif);
   ...
   initial begin
@@ -250,3 +252,25 @@ endprogram
 # test should contained in 1 unique program
 # use OOP to build dynamic hierarchical testbench instead of module
 # should always use automatic to mimic C
+
+#------------------------------------------------------
+# clock
+#------------------------------------------------------
+# the clock should always be declared in a module like so:
+module clock_generator(output bit clk);
+  initial
+    forever #5 clk = ~clk;
+endmodule
+
+#------------------------------------------------------
+# systemverilog assertions (SVA)
+#------------------------------------------------------
+# immediate assertions
+bus.cb.request <= 1'b1;
+repeat (2) @bus.cb;
+a1: assert (bus.cb.grant == 2'b01)
+  granted ++;                   // not necessary customization
+else                            // not necessary customization
+  $display("Grant failed !");   // not necessary customization
+
+# immediate assertions: TODO
