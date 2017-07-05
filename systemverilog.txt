@@ -41,8 +41,8 @@ barray[1][0][7] = 1'b1;
 # dynamic arrays
 #------------------------------------------------------
 int dyn[];
-dyn = new[5];   // allocate 5 new elements, old values are lost
-dyn = new[100]; // allocate 100 new elements and copy
+dyn = new[5];           // allocate 5 new elements, old values are lost
+dyn = new[100](dyn);    // allocate 100 new elements and copy
 dyn.delete();
 
 #------------------------------------------------------
@@ -273,4 +273,191 @@ a1: assert (bus.cb.grant == 2'b01)
 else                            // not necessary customization
   $display("Grant failed !");   // not necessary customization
 
-# immediate assertions: TODO
+# concurrent assertions: TODO
+
+
+#===============================================================
+# basic OOP
+#===============================================================
+# good practice: define them in a package
+# good practice: separate declaration and construction
+
+# a method in a class (task or function) uses automatic by default !
+
+#------------------------------------------------------
+# vocabulary
+#------------------------------------------------------
+#   - class: building block containing routines and variables
+#   - object: instance of a class
+#   - handle: pointer to an object
+#   - property: variable that holds data
+#   - method: task or function manipulating variables
+#   - prototype: header of a routine
+
+#------------------------------------------------------
+# construction
+#------------------------------------------------------
+class Transaction;
+  logic [31:0] addr, crc, data[8];
+
+  function new(logic [31:0] a=3, d=5);
+    addr = a;
+    foreach (data[i])
+      data[i] = d;
+  endfunction
+endclass
+
+initial begin
+  Transaction tr0, tr1, tr2;    // declare handles
+  tr0 = new();                  // allocate object; handle references it
+  tr1 = new(10);
+  tr2 = new(10,20);
+end
+
+#------------------------------------------------------
+# deallocation
+#------------------------------------------------------
+# systemverilog uses garbage collection:
+#   once the last handle of an object no longer references it,
+#   it releases the memory for that object
+Transaction t;
+t = new();      // allocate 1st object
+t = new();      // allocate 2nd object, deallocate the 1st
+t = null;       // deallocate the 2nd
+
+#------------------------------------------------------
+# difference with C/C++
+#------------------------------------------------------
+# SV does not allow any modification of a handle or using a handle
+# of 1 type to refet to an object of another type
+
+# because of its garbage collection (not manual), you can be sure
+# that a handle is always pointing to a valid object
+
+# public variable directly accessible by users is preferred to get()
+# and put() method in SV
+
+#------------------------------------------------------
+# static variable in a class
+#------------------------------------------------------
+# to be used instead of a global variable
+class Transaction;
+  static int count = 0; // Number of objects created
+  int id;               // Unique instance ID
+  function new();
+    id = count++;       // Set ID, bump count
+  endfunction
+endclass
+
+Transaction t1, t2;
+initial begin
+  t1 = new();   // 1st instance, id=0, count=1
+  t2 = new();   // 2nd instance, id=1, count=2
+  $display("Second id=%d, count=%d", t2.id, t2.count);
+  $display("How to access a static var: %d", Transaction::count);
+end
+
+#------------------------------------------------------
+# static handle
+#------------------------------------------------------
+# avoid copying the same object multiple times
+class Transaction;
+  static Config cfg;
+
+  function new();
+    mode = cfg.mode;
+  endfunction
+endclass
+
+Config cfg;
+initial begin
+  cfg = new(MODE_ON);
+  Transaction::cfg = cfg;
+  ...
+end
+
+#------------------------------------------------------
+# static method
+#------------------------------------------------------
+# can also be used and defined like static variables,
+# can only access args and/or static variables
+
+#------------------------------------------------------
+# defining method outside of class
+#------------------------------------------------------
+class Transaction;
+  bit [31:0] addr, crc, data[8];
+  extern function void display();
+endclass
+
+function void Transaction::display();
+  ...
+endfunction
+
+#------------------------------------------------------
+# passing object to function with ref
+#------------------------------------------------------
+# allow to modify object
+# allow to save memory a it does not copy the object twice
+function void create (ref Transaction tr);
+  tr = new();
+  tr.addr = 42;
+endfunction
+
+Transaction t;
+initial begin
+  create (t);
+  $display(t.addr);
+end
+
+#------------------------------------------------------
+# copying object
+#------------------------------------------------------
+# shallow copy: if Transaction contains a handle pointing to
+# another object, src and dst will point to the same one !!!
+Transaction src, dst;
+initial begin
+  src = new();      // create 1st object calling Transaction's new() if defined
+  dst = new src;    // shallow copy of src
+  dst.stats.startT = 96;
+  $display(src.stats.startT);   // prints 96 !
+end
+
+# deep copy
+class Transaction;
+  bit [31:0] addr, crc, data[8];
+  Statistics stats; // Handle points to Statistics object
+  static int count = 0;
+  int id;
+
+  function new();
+    stats = new();
+    id = count++;
+  endfunction
+
+  function Transaction copy();
+    copy = new();       // Construct destination object
+    copy.addr = addr;   // Fill in data values
+    copy.crc = crc;
+    copy.data = data;
+    copy.stats = stats.copy(); // Call Statistics::copy
+  endfunction
+endclass
+
+class Statistics;
+  time startT, stopT; // Transaction times
+  ...
+  function Statistics copy();
+    copy = new();
+    copy.startT = startT
+    copy.stopT = stopT;
+  endfunction
+endclass
+
+Transaction src, dst;
+initial begin
+  src = new();
+  src.stats.startT = 42;
+  dst = new src;    // uses copy()
+  dst.stats.startT = 96;
+end
