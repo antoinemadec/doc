@@ -688,3 +688,282 @@ end
 
 # systemverilog has a PRNG per object and thread: with the same seed,
 # the same object will be the same if its class did not change
+
+
+#===============================================================
+# threads and interprocess communication (IPC)
+#===============================================================
+# fork...join; fork...join_any; fork...join_none
+
+# a class constructor should initialize values, not start any thread
+
+# classic automatic fork...join_none bug:
+initial begin
+  for (int j=0; j<3; j++)
+    fork
+      automatic int k = j;
+      $display(k);
+    join_none
+  wait fork;
+end
+
+#------------------------------------------------------
+# disable threads
+#------------------------------------------------------
+# disable fork
+initial begin
+  fork begin    // needed to limit scope of disable fork
+    // forks and threads
+    // wait something
+    disable fork;
+  end join      // needed to limit scope of disable fork
+end
+
+# disable label
+initial begin
+  fork    // th0
+  begin : threads_inner
+    check_trans(tr1); // th1
+    check_trans(tr2); // th2
+  end
+  // Stop th[12] but leave th0 alone
+  #(TIME_OUT/2) disable threads_inner;
+  join
+end
+
+# disable a task
+task automatic wait_for_timeout(int id);
+  fork
+    if (id == 0)
+      #2 disable wait_for_timeout;
+  join_none
+  fork
+    #10 $display("%m done");
+  join_none
+endtask
+initial begin
+  wait_for_timeout(0);
+  wait_for_timeout(1);
+  wait_for_timeout(2);
+  // none of them will display done, id0 kills
+  // all wait_for_timeout() in all threads
+end
+
+#------------------------------------------------------
+# IPC: events
+#------------------------------------------------------
+# events are zero-width pulse
+
+# -> and @
+event e1, e2;
+initial begin
+  $display("1: before");
+  -> e1;
+  @e2;
+  $display("1: after");
+end
+initial begin
+  $display("2: before");
+  -> e2;
+  @e1;
+  $display("2: after");
+end
+# displays:
+#   1: before
+#   2: before
+#   1: after
+
+# wait(e.triggered());
+event e1, e2;
+initial begin
+  $display("1: before");
+  -> e1;
+  wait(e2.triggered());
+  $display("1: after");
+end
+initial begin
+  $display("2: before");
+  -> e2;
+  wait(e1.triggered());
+  $display("2: after");
+end
+# displays:
+#   1: before
+#   2: before
+#   1: after
+#   2: after
+
+# events in loop
+forever begin
+  // this is a zero delay loop !!!
+  wait(handshake.triggered());
+  process_in_zero_time();
+end
+forever begin
+  wait(handshake.triggered());
+  $display("foo");  // this fixes it
+  process_in_zero_time();
+end
+
+# events can be passed to classes and routines
+class Gen;
+  event done;
+  function new(event done);
+    this.done = done;
+  endfunction
+
+  task run();
+    // do stuff
+    -> done;
+  endtask
+endclass
+
+event gen_done;
+Gen gen;
+initial begin
+  gen = new(gen_done);
+  wait(gen_done.triggered());
+end
+
+# waiting for multiple events
+foreach (gen[i]) begin
+  fork
+    automatic int k = i;
+    wait(done[k].triggered());
+  join_none
+end
+wait fork;
+
+# waiting on static var is easier
+class Gen;
+  static int th_cnt = 0;
+  task run();
+    th_cnt++;
+    fork
+      begin
+        // do stuff
+        th_cnt--;
+      end
+    join_none
+  endtask
+endclass
+
+initial begin
+  foreach (gen[i])
+    gen[i] = new();
+  foreach (gen[i])
+    gen[i] = run();
+  wait(Gen::th_cnt == 0);
+end
+
+#------------------------------------------------------
+# IPC: semaphores
+#------------------------------------------------------
+# new(n), get(n), put(n)
+# try_get(n): do not block, returns 1 if enough keys, 0 otherwise
+semaphore sem;
+initial begin
+  sem = new(1);
+  fork
+    foo();
+    foo();
+  join
+end
+
+task foo();
+  sem.get(1);
+  // do stuff
+  sem.put(1);
+endtask
+
+#------------------------------------------------------
+# IPC: mailbox
+#------------------------------------------------------
+# fifo to put whatever type inside
+# typically: "generator" ========> "driver"
+
+# function are new(), put(h), get(h)
+# peek(h): create a copy of h, but does not remove it
+# try_peek(h), try_get(h): non blocking
+# calling new(n) will limit mailbox size to n
+
+class Generator;
+  Transaction tr;
+  mailbox mbx;
+
+  function new(mailbox mbx);
+    this.mbx = mbx;
+  endfunction
+
+  task run(int count);
+    repeat (count) begin
+      tr = new();   // allocate object in the loop, not outside
+      assert(tr.randomize());
+      mbx.put(tr);
+    end
+  endtask
+endclass
+
+class Driver;
+  Transaction tr;
+  mailbox mbx;
+
+  function new(mailbox mbx);
+    this.mbx = mbx;
+  endfunction
+
+  task run(int count);
+    repeat (count) begin
+      mbx.get(tr);
+      ...
+    end
+  endtask
+endclass
+
+program automatic mailbox_example(bus_if.TB bus,...);
+`include "transaction.sv"
+`include "generator.sv"
+`include "driver.sv"
+
+  mailbox mbx;
+  Generator gen;
+  Driver drv;
+  int count;
+
+  initial begin
+    count = $urandom_range(50);
+    mbx = new();
+    gen = new(mbx);
+    drv = new(mbx);
+    fork
+      gen.run(count);
+      drv.run(count);
+    join
+  end
+endprogram
+
+# right now the Generator and Driver are not in sync,
+# we can use bounded mailboxes and peek() to add sync
+class Consumer;
+  mailbox mbx;
+  task run();
+    int i;
+    repeat(3) begin
+      mbx.peek(i);
+      // do stuff
+      mbx.get(i);
+    end
+endclass
+
+initial begin
+  mbx = new(1);
+  p = new();
+  c = new();
+
+  fork
+    p.run();
+    c.run();
+  join
+end
+
+# sync can also be achieved using events or 2 mailboxes
