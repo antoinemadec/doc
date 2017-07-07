@@ -461,3 +461,230 @@ initial begin
   dst = new src;    // uses copy()
   dst.stats.startT = 96;
 end
+
+
+#===============================================================
+# randomization
+#===============================================================
+#------------------------------------------------------
+# what to randomize
+#------------------------------------------------------
+# device configuration:         DUT config
+# environment configuration:    config of other blocks
+# primary input data:           main data
+# encapsulated input data:      data inside the data
+# protocol exceptions
+# delays
+# transaction status
+# errors and violation
+
+#------------------------------------------------------
+# how to randomize
+#------------------------------------------------------
+# never randomize in the constructor
+# all rand should be public
+
+class Packet;
+  // The random variables
+  rand bit [31:0] src, dst, data[8];
+  randc bit [7:0] kind;
+  // Limit the values for src
+  constraint c {src > 10;
+                src < 15;}
+endclass
+
+Packet p;
+initial begin
+  p = new();// Create a packet
+  assert (p.randomize())
+  else $fatal(0, "Packet::randomize failed");
+  transmit(p);
+end
+
+#------------------------------------------------------
+# constraints
+#------------------------------------------------------
+class Packet;
+  ...
+  rand bit [6:0] b;
+  rand bit [5:0] e;
+  rand int c,f;
+  int fib[6] = '{1,1,2,3,5,8};
+  typedef enum {SUN, MON, TUE, WED, THU, FRI, SAT} days_e;
+  days_e choices[$];
+  rand dayes_e choice;
+
+  constraint constr {
+    lo < med; // max is 1 relational...
+    med < hi; // ...operator per line
+    foo inside {[-100:100]};
+    bar dist {0:=40, [1:3]:=60};    // 0: weight=40/220
+    bor dist {0:/40, [1:3]:/60};    // 0: weight=40/100
+    b inside {[$:4], [20:$]};       // 0<=b<=4 || 20<=b<=127
+    e inside {[$:4], [20:$]};       // 0<=e<=4 || 20<=e<=63
+    !(c inside {[lo:hi]};           // c<lo || c>hi
+    f inside fib;                   // 1 has the same weight as other member of fib
+    choice inside choices;          // dynamic
+  }
+
+  constraint c_external;
+endclass
+
+Packet p;
+initial begin
+  Packet::c_external { length == 1;}
+  p = new;
+  p.choices = {Packet::TUE, Packet::THU};
+  assert (p.randomize());
+  $display("day is %s", p.choice.name());   // name return string of enum value name
+  p.choices = {Packet::MON, Packet::WED, Packet::FRI};
+  assert (p.randomize());
+  $display("day is %s", p.choice.name());   // name return string of enum value name
+end
+
+# contraints are not procedural code: it is not read from top to bottom
+# contraints are declarative code: all active at the same time
+# contraints are bidirectional (even if-else):
+#   - constraints are solved concurrently
+#   - adding or removing constrain of 1 var affect all var that are directly or indirectly related
+
+# constraints arithmetic: avoid '*' '/' and '%'
+
+# constraint solver depends on simulator, SV does not guarantee the exact solution,
+# you influence distribution with solve 'x' before 'y';
+class Foo;
+  rand bit x;
+  rand bit y;
+  constraint c {
+    (x==0) -> y==0;
+    solve x before y;
+  }
+endclass
+# x before y gives the following (x,y) repartition:
+# (0,0)     x before y: 1/2     y before x: 1/4
+# (0,1)     x before y: 0       y before x: 0
+# (1,0)     x before y: 1/4     y before x: 1/4
+# (1,1)     x before y: 1/4     y before x: 1/2
+
+# enable/disable constraints
+Packet p;
+initial begin
+  p = new();
+  p.constraint_mode(0);                     // disable all; by default they are all enabled
+  p.valid_constraint.constraint_mode(1);    // enable the most permissive constraint
+  assert(p.randomize());
+  ...
+  assert(p.randomize() with {addr >=50; data<10;}); // in-line constraint
+end
+
+#------------------------------------------------------
+# other random functions
+#------------------------------------------------------
+# function void pre_randomize() and post_randomize() are run before and after randomize(),
+# they only accept function inside
+
+# $random           : flat dist,return  signed 32b
+# $urandom          : flat dist,return  unsigned 32b
+# $urandom_range    : flat dist over a range
+# $dist_exponential : exponential decay
+# $dist_normal
+# $dist_poisson
+# $dist_uniform
+
+# disable randomization of 1 var
+p.foo.rand_mode(0);
+p.foo = 42;
+assert(p.randomize());
+
+# check object satisfy constraints after modifications
+assert(p.randomize());
+p.bar = 56;
+assert(p.randomize(null));  # don't randomize, just check if bar=56 is legal
+
+# randomize only 1 var
+assert(p.randomize(foo));   # only randomize foo
+
+# randcase
+initial begin
+  int len;
+  randcase
+    1: len = $urandom_range(0,2);
+    8: len = $urandom_range(1,2);
+    1: len = $urandom_range(5,8);
+  endcase
+end
+
+#------------------------------------------------------
+# array randomization
+#------------------------------------------------------
+class DynSize;
+  rand logic [31:0] d[];
+  constraint d_size {d.size() inside {[1:10]};}
+endclass
+
+# strobe.sum() would be on 1b if not compared to 4b
+class StrobePat;
+  rand bit strobe[10];
+  constraint c_set_four { strobe.sum() == 4'h4; }
+endclass
+
+class GoodSum;
+  rand uint len[];
+  constraint c_len {
+    foreach (len[i])
+      len[i] inside {[1:255]};
+    len.sum < 1024;
+    len.size() inside {[1:8]};
+  }
+endclass
+
+class Ascend;
+  rand uint d[10];
+  constraint c {
+    foreach (d[i])
+      if (i>0)
+        d[i]>d[i-1];
+  }
+endclass
+
+# array of handles: need to allocate all the element before randomization
+class RandStuff
+  rand int value;
+endclass
+
+class RandArray;
+  rand RandStuff array[];
+
+  constraint c {array.size() inside {[1:10]};}
+
+  function new();
+    array = new[10];    // allocate max size
+    foreach (array[i])
+      array[i] = new();
+  endfunction
+endclass
+
+RandArray ra;
+initial begin
+  ra = new();
+  assert(ra.randomize());
+  foreach (ra.array[i])
+   $display(ra.array[i].value);
+end
+
+#------------------------------------------------------
+# sequences
+#------------------------------------------------------
+# to generate a sequence a multiple transaction, the best option
+# is to use an array of handle pointing on transactions
+
+# the use of "randsequence" is not encouraged
+
+#------------------------------------------------------
+# random number generator (PRNG)
+#------------------------------------------------------
+# verilog has a single PRNG: a new rand to compute in a class
+# would affect other class
+
+# systemverilog has a PRNG per object and thread: with the same seed,
+# the same object will be the same if its class did not change
