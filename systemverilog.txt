@@ -522,7 +522,7 @@ class Packet;
     bor dist {0:/40, [1:3]:/60};    // 0: weight=40/100
     b inside {[$:4], [20:$]};       // 0<=b<=4 || 20<=b<=127
     e inside {[$:4], [20:$]};       // 0<=e<=4 || 20<=e<=63
-    !(c inside {[lo:hi]};           // c<lo || c>hi
+    !(c inside {[lo:hi]});          // c<lo || c>hi
     f inside fib;                   // 1 has the same weight as other member of fib
     choice inside choices;          // dynamic
   }
@@ -967,3 +967,232 @@ initial begin
 end
 
 # sync can also be achieved using events or 2 mailboxes
+
+
+#===============================================================
+# advanced OOP and testbench guidelines
+#===============================================================
+# always use virtual for tasks and functions is a good practice
+
+#------------------------------------------------------
+# extend a class
+#------------------------------------------------------
+# parent or super class
+class Transaction;
+  rand bit [31:0] src, dst, data[8];    // random var
+  bit [31:0] crc;                       // calculated var
+
+  virtual function void calc_crc;
+    crc = src ^ dst ^ data.xor;
+  endfunction
+
+  virtual function display(input string prefix="");
+    $display("%sTr: src=%h, dst=%h, crc=%h",
+            prefix, src, dst, crc);
+  endfunction
+endclass
+
+# derived or sub class
+class BadTr extends Transaction;
+  rand bit bad_crc;
+
+  virtual function void calc_crc();
+    super.calc_crc();           // compute good CRC
+    if (bad_crc) crc = ~crc;    // corrupt CRC
+  endfunction
+
+  virtual function void display(input string prefix="");
+    $write("%BadTr: bad_ctc=%b", prefix, bad_crc);
+    super.display();
+  endfunction
+endclass : BadTr
+
+# a base class is a class is not derived from any other class
+
+# constructors of derived classes:
+class Extended extends Base1;
+  function new(input in var);   // needs argument because of Base1
+    super.new(var);             // must be on the 1st line
+    // other stuff
+  endcuntion
+endclass
+
+#------------------------------------------------------
+# blueprint: generator class
+#------------------------------------------------------
+# 1 object is use as the reference xaction, that way we can:
+#   - apply constraint_mode on 1 object only
+#   - or change 1 handle only with another handle
+class Generator;
+  mailbox gen2drv;
+  Transaction blueprint;
+
+  function new(input mailbox gen2drv);
+    this.gen2drv = gen2drv;
+    blueprint = new();
+  endfunction
+
+  task run();
+    Transaction tr;
+    forever begin
+      assert(blueprint.randomize);
+      tr = blueprint.copy();
+      gen2drv.put(tr);
+    end
+  endtask
+endclass
+
+#------------------------------------------------------
+# downcasting and virtual methods
+#------------------------------------------------------
+# base handle pointing to extended obj: OK
+Transaction tr;
+BadTr bad;
+bad = new();
+tr = bad;           // base handle points to extended obj
+$display(tr.src);   // display base var
+tr.display;         // calls BadTr::display
+
+# extended handle pointing to base obj: FAIL
+tr = new();
+bad = tr;               // ERROR: will not compile
+$display(bad.bad_crc);  // bad_crc is not a bas object
+
+# cast
+bad = new();
+tr = bad;
+
+$cast(bad2, tr);        // simulation error if object type mismatch
+if (!$cast(bad2, tr))   // no simulation error
+  $display("cannot assign tr to bad2");
+
+$display(bad2.bad_crc); // bad_crc exists in obj
+
+#------------------------------------------------------
+# virtual methods
+#------------------------------------------------------
+# new() and post|pre_randomize() cannot be declared as virtual,
+# but handle.new() will always use the object's type new(), not the handle one
+
+# signature (number and type of args) of virtual method in extended classes must be the same
+#
+# using virtual allows polymorphism and forces SV to use the object's type instead
+# of the handle's type when calling a function
+Transaction tr;
+BadTr bad;
+
+initial begin
+  tr = new();
+  tr.calc_crc();    // calls Transaction::calc_crc
+
+  bad = new();
+  bad.calc_crc();   // calls BadTr::calc_crc
+
+  tr = bad;
+  tr.calc_crc();    // calls BadTr::calc_crc
+end
+
+#------------------------------------------------------
+# inheritance VS composition
+#------------------------------------------------------
+# this only case in which you should use composition instead of inheritance
+# is when you need to group multiple subclasses together. SV does not support
+# multiple inheritance, thus composition is the only option
+
+# composition issues:
+#   - adds extra hierarchical layers
+#   - can add cirular dependencies in randomization
+
+# inheritance issues:
+#   - more effort to design, use of $cast etc
+#   - multiple inheritance is not supported
+
+# when neither composition nor inheritance is satisfactory,
+# a flat class is an acceptable solution
+
+#------------------------------------------------------
+# abstract class & pure virtual methods
+#------------------------------------------------------
+# abstract class: base class than cannot be instantiated by itself (needs to be extended).
+# it is defined by the word "virtual"
+
+# pure virtual method: define prototype of methods that need to be present in the extended classes.
+# It can only be defined in abstract classes.
+
+virtual class BaseTr;   // abstract class
+  static int count;
+  int id;
+
+  function new();
+    id = count++;
+  endfunction
+
+  pure virtual function bit compare(input BaseTr to);
+  pure virtual function BaseTr copy(input BaseTr to=null);
+  pure virtual function void display(input string prefix="");
+endclass : BaseTr
+
+#------------------------------------------------------
+# callbacks
+#------------------------------------------------------
+virtual class Driver_cbs;
+  virtual task pre_tx(ref Transaction tr, ref bit drop);
+  endtask
+
+  virtual task post_tx(ref Transaction tr, ref bit drop);
+  endtask
+endclass
+
+class Driver;
+  Driver_cbs cbs[$];
+
+  task run();
+    bit drop;
+    Transaction tr;
+
+    forever begin
+      drop = 0;
+      agt2drv.get(tr);
+      foreach (cbs[i]) cbs[i].pre_tx(tr, drop);
+      if (drop) continue;
+      transmit(tr);
+      foreach (cbs[i]) cbs[i].post_tx(tr, drop);
+    end
+  endtask
+endclass
+
+class Driver_cbs_drop extends Driver_cbs;
+  virtual task pre_tx(ref Transaction tr, ref bit drop);
+    drop = ($urandom_range(0,99) == 0);
+  endtask
+endclass
+
+program automatic test;
+  Environment env;
+
+  initial begin
+    env = new();
+    env.gen_cfg();
+    env.build();
+
+    Driver_cbs_drop dcd = new();
+    env.drv.cbs.push_back(dcd);
+
+    env.run();
+    env.wrap_up();
+  end
+endprogram
+
+#------------------------------------------------------
+# parametrized classes
+#------------------------------------------------------
+class Stack #(type T=int);
+  local T stack[100];
+  local int top;
+  function void push(input T i);
+    stack[++top] = i;
+  endfunction
+  function T pop();
+    return stack[top--];
+  endfunction
+endclass
