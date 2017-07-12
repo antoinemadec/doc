@@ -1196,3 +1196,50 @@ class Stack #(type T=int);
     return stack[top--];
   endfunction
 endclass
+
+
+#===============================================================
+# functional coverage
+#===============================================================
+# measure of which features have been exercised by the tests
+
+# in order to reach 100%:
+#   - run more constrained random test (CRT) with different seeds
+#   - or change the constraints
+#   - or create directed test if absolutely necessary
+
+# if bug rate is still high around 100% coverage, you might not
+# be measuring the right cover points
+
+#------------------------------------------------------
+# coverage types
+#------------------------------------------------------
+# code coverage:
+#   - line coverage: which lines have been executed ?
+#   - path coverage: which paths through the expression have been executed ?
+#   - toggle coverage: which bit have toggled ?
+#   - FSM coverage: which state and transition have been visited ?
+
+# functional coverage: test features
+
+# bugs/week is a great metric
+
+# assertion coverage: check for errors on signals
+#   - can use systemverilog procedural code
+#   - or systemverilog assertions (SVA):
+#       + "assert property":    look for errors
+#       + "cover property":     look for cover points
+
+#------------------------------------------------------
+# coverage strategies
+#------------------------------------------------------
+# gather info, not data:
+#   for instance a FIFO need to test Full and Empty
+#   states in between don't have to be gathered
+
+# only measure what your are going to use:
+
+# measure completeness:
+#   - code coverage is high (~100%)
+#   - functional coverage is high (~100%)
+#   - bug rate is low (~0%)
