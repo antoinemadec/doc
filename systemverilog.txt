@@ -1243,3 +1243,217 @@ endclass
 #   - code coverage is high (~100%)
 #   - functional coverage is high (~100%)
 #   - bug rate is low (~0%)
+
+#------------------------------------------------------
+# covergroup
+#------------------------------------------------------
+# covergroup instance are created with new() and populated with sample()
+program automatic test(busifc.TB ifc);
+  class Transaction;
+    rand bit [3:0] data;
+    rand bit [2:0] port;    // 8 port numbers
+  endclass
+
+  covergroup CovPort;
+    coverpoint tr.port;     // measure we exercises all 8 ports
+  endgroup
+
+  initial begin
+    Transaction tr;
+    CovPort ck;
+    ck = new();             // instantiate group
+    tr = new();
+    repeat (32) begin
+      assert(tr.randomize);
+      ifc.cb.port <= tr.port;
+      ifc.cb.data <= tr.data;
+      ck.sample();              // gather coverage
+      @ifc.cb;
+    end
+  end
+endprogram
+
+# a covergroup gather data only if instantiated (new())
+
+# do not define covergroup at a too low level of abstraction (not in transaction class),
+# you would collect way too many useless info.
+
+# if defined in a class, covergroup does not need a separate name to instantiate it:
+class Transactor;
+  Transaction tr;
+  mailbox mbx_in;
+  covergroup CovPort;
+    coverpoint tr.port;
+  endgroup
+
+  function new(mailbox mbx_in);
+    this.mbx_in = mbx_in;
+    CovPort = new();
+  endfunction
+
+  task main;
+    forever begin
+      tr = mbx_in.get;
+      ifc.cb.port <= tr.port;
+      ifc.cb.data <= tr.data;
+      CovPort.sample();
+      @ifc.cb;
+    end
+  endtask
+endclass
+
+# sampling a covergroup can be done:
+#   - with sample() in post_tx callback (see callback chapter)
+#   - with @event syntax, like so:
+event trans_ready;
+covergroup CovPort @(trans_ready);
+  coverpoint ifc.cb.port;
+endgroup
+
+# limiting bins:
+#   - 1 coverpoint
+covergroup CovPort;
+  coverpoint tr.port
+    { options.auto_bin_max = 2; }   // divide into 2 bins ([0:3], [4:7])
+endgroup
+#   - all coverpoint
+covergroup CovPort;
+  options.auto_bin_max = 2; // affects port & data
+  coverpoint tr.port;
+  coverpoint tr.data;
+endgroup
+
+# weight, similarely as options.auto_bin_max:
+options.weight = 4; // or 0 to exclude it from coverage
+# other option are "goal", "at_least", "comment"
+
+# expressions:
+class Transaction;
+  rand bit [2:0] hdr_len;
+  rand bit [3:0] payload_len;
+  rand bit [3:0] kind;
+endclass
+covergroup CovLen;
+  len16: coverpoint (tr.hdr_len + tr.payload_len);          // addition on 4 bits only...
+  len32: coverpoint (tr.hdr_len + tr.payload_len + 5'b0);   // addition on 5 bits
+endgroup
+
+# user defined bins:
+covergroup CovLen;
+  len: coverpoint (tr.hdr_len + tr.pauload_len + 5'b0)
+    {bins len[] = {[0:23]}; }
+endgroup
+
+covergroup CovLen;
+  coverpoint tr.kind {
+    bins zero = {0};        // 1 bin for 0
+    bins lo   = {[1:3], 5}; // 1 bin for 1:3, 5
+    bins hi[] = {[8:$]};    // 8 separate bins for 8...15
+    bins misc = default;    // 1 bin for all the rest
+  }
+endgroup
+
+# conditional coverage:
+#   - use "iff":
+covergroup CovPort;
+  coverpoint bus_if.port iff !(bus_if.reset);
+endgroup
+#   - use stop() and start() functions
+initial begin
+  CovPort ck;
+  ck = new();
+  #1ns ck.stop();
+  bid_if.reset = 1;
+  #100ns bus_if.reset = 0;
+  ck.start();
+  ...
+end
+
+# transaction civerage
+covergroup CovPort;
+  coverpoint port {
+    bins t1 = (0=>1), (0=>2), (0=>3);   // equivalent to (0=>1,2,3);
+    bins t2 = (0=>1), (0=>3=>4=>2);
+    bins t3 = 0=>1=>1=>1=>2;            // equivalent to 0=>1[*3]=>2;
+    bins t4 = (0=>1=>4), (0=>1=>1=>4);  // equivalent to 0=>1[*1:2]=>4;
+  }
+endgroup
+
+# wildcard, illegal, ignore
+covergroup CovPort;
+  coverpoint port {
+    wildcard bins even  = {3'b??0};
+    wildcard bins odd   = {3'b??1};
+    ignore_bins zero    = {0};      // exclude it from coverage
+    illegal_bins seven  = {3'b111}; // result in an error
+  }
+endgroup
+
+# cross coverage
+covergroup CovPort;
+  kind: coverpoint tr.kind;
+  port: coverpoint tr.port;
+  cross kind, port;
+endgroup
+
+# ignore bins in cross coverage
+covergroup CovPort;
+  port: coverpoint tr.port {
+    bins port[] = {[0:$]};
+  }
+  kind: coverpoint tr.kind {
+    bins lo     = {[0:3]};
+    bins hi[]   = {[8:$]};
+    bins misc   = default;
+  }
+  cross kind, port {
+    ignore_bins hi = binsof(port) instersect {7};
+    ignore_bins md = binsof(port) instersect {0} &&
+                     binsof(kind) instersect {[9:11]};
+    ignore_bins lo = binsof(kind.lo);
+  }
+endgroup
+
+# specify bins in cross coverage
+covergroup CovBin;
+  a: coverpoint tr.a {
+    bins a0 = {[0]};
+    bins a1 = {[1]};
+  }
+  b: coverpoint tr.b {
+    bins b0 = {[0]};
+    bins b1 = {[1]};
+  }
+  ab: cross a, b {
+    bins a0b0   = binsof(a.a0) && binsof(b.b0);
+    bins a1b0   = binsof(a.a1) && binsof(b.b0);
+    bins b1     = binsof(b.b1);
+  }
+# equivalent to:
+  ab: cross a, b {
+    bins a0b0   = binsof(a) intersect {0} && binsof(b) intersect {0};
+    bins a1b0   = binsof(a) intersect {1} && binsof(b) intersect {0};
+    bins b1     = binsof(b) intersect {1};
+  }
+endgroup
+
+# pass argument to covergroup
+bit [2:0] port_a, port_b;
+covergroup CoverPort (ref bit [2:0] port, input int mid);
+  coverpoint port {
+    bins lo = {[0:mid]};
+    bins hi = {[mid:$]};
+  }
+endgroup
+
+CoverPort cpa, cpb;
+initial
+begin
+  cpa = new(port_a, 4);
+  cpb = new(port_b, 2);
+end
+
+# measuring coverage:
+$get_coverage();            // at top level: gives 1 number
+CoverGroup::get_coverage(); // get number of all instances of CoverGroup
+cgInst.get_coverage();      // get number specific instance of CoverGroup
