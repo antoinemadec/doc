@@ -195,8 +195,8 @@ class my_monitor #(parameter PASSIVE=0) extends uvm_monitor;
     forever @(posedge vif.clk)
     begin
       if (vif.rst_n)
-        # or "rx" if PASSIVE
-        tx = my_transaction::type_id::create("rx", this);
+        # or "tx" if PASSIVE
+        rx = my_transaction::type_id::create("rx", this);
 ...
         item_collected_port.write(rx);
       end
@@ -243,8 +243,55 @@ endclass
 #===============================================================
 # communication between classes
 #===============================================================
+#------------------------------------------------------
+# sequence - sequencer - driver
+#------------------------------------------------------
+# in env's run_phase
+seq.start(env.m_agent.sequencer);
+# in agent's connect_phase
+m_driver.seq_item_port.connect(sequencer.seq_item_export);
+# in agent's driver
+seq_item_port.get_next_item(req);
+...
+seq_item_port.item_done();
+# in sequence's body
+start_item(req);
+if (!req.randomize())
+  `uvm_error("MASTER_SEQ", "could not randomize")
+finish_item(req);
 
+#------------------------------------------------------
+# monitor - scoreboard
+#------------------------------------------------------
+# in monitor
+uvm_analysis_port #(my_transaction) item_collected_port;
+task run_phase(uvm_phase phase);
+...
+  # or "tx" if PASSIVE
+  item_collected_port.write(rx);
+...
+
+# in env's connect phase
+m_agent.m_monitor.item_collected_port.connect(scoreboard.item_collected_export_rx);
+s_agent.s_monitor.item_collected_port.connect(scoreboard.item_collected_export_tx);
+
+# in scoreboard
+`uvm_analysis_imp_decl(_rx)
+`uvm_analysis_imp_decl(_tx)
+class my_scoreboard extends uvm_scoreboard;
+  `uvm_component_utils(my_scoreboard)
+  uvm_analysis_imp_rx#(my_transaction, my_scoreboard) item_collected_export_rx;
+  uvm_analysis_imp_tx#(my_transaction, my_scoreboard) item_collected_export_tx;
+...
+  function write_rx(my_transaction pkt);
+...
+  function write_tx(my_transaction pkt);
+...
 
 #===============================================================
 # override a sequence_item
 #===============================================================
+# by instance
+my_transaction::type_id::set_inst_override(my_transaction_deadbeef::get_type(), "env.m_agent.sequencer.seq1.req");
+# by type
+my_transaction::type_id::set_type_override(my_transaction_deadbeef::get_type(), 1);
