@@ -21,8 +21,8 @@ $isunknown(my_var); // return 1 if one bit is X or Z
 #------------------------------------------------------
 int arr[16];
 arr = '{9, 4, default:-1};
-for (int i=0; i<$size; i++) // both are equivalent
-foreach (arr[j])            // both are equivalent
+for (int i=0; i<$size(arr); i++)    // both are equivalent
+foreach (arr[j])                    // both are equivalent
 
 # multidimensional
 int mult[2][3];
@@ -778,13 +778,13 @@ event e1, e2;
 initial begin
   $display("1: before");
   -> e1;
-  wait(e2.triggered());
+  wait(e2.triggered);
   $display("1: after");
 end
 initial begin
   $display("2: before");
   -> e2;
-  wait(e1.triggered());
+  wait(e1.triggered);
   $display("2: after");
 end
 # displays:
@@ -1071,8 +1071,7 @@ $display(bad2.bad_crc); // bad_crc exists in obj
 #------------------------------------------------------
 # virtual methods
 #------------------------------------------------------
-# new() and post|pre_randomize() cannot be declared as virtual,
-# but handle.new() will always use the object's type new(), not the handle one
+# new() and post|pre_randomize() cannot be declared as virtual
 
 # signature (number and type of args) of virtual method in extended classes must be the same
 #
