@@ -246,7 +246,7 @@ endclass
 #------------------------------------------------------
 # sequence - sequencer - driver
 #------------------------------------------------------
-# in env's run_phase
+# in test's run_phase
 seq.start(env.m_agent.sequencer);
 # in agent's connect_phase
 m_driver.seq_item_port.connect(sequencer.seq_item_export);
