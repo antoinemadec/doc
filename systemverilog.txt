@@ -1045,7 +1045,7 @@ class BadTr extends Transaction;
   endfunction
 endclass : BadTr
 
-# a base class is a class is not derived from any other class
+# a base class is a class that is not derived from any other class
 
 # constructors of derived classes:
 class Extended extends Base1;
@@ -1132,7 +1132,7 @@ end
 #------------------------------------------------------
 # inheritance VS composition
 #------------------------------------------------------
-# this only case in which you should use composition instead of inheritance
+# the only case in which you should use composition instead of inheritance
 # is when you need to group multiple subclasses together. SV does not support
 # multiple inheritance, thus composition is the only option
 
