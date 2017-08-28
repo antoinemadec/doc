@@ -21,8 +21,8 @@ $isunknown(my_var); // return 1 if one bit is X or Z
 #------------------------------------------------------
 int arr[16];
 arr = '{9, 4, default:-1};
-for (int i=0; i<$size; i++) // both are equivalent
-foreach (arr[j])            // both are equivalent
+for (int i=0; i<$size(arr); i++)    // both are equivalent
+foreach (arr[j])                    // both are equivalent
 
 # multidimensional
 int mult[2][3];
@@ -62,9 +62,10 @@ j= q.pop_back();    // j=3; q={9,0,1,4]
 #------------------------------------------------------
 # model extremely large address space arrays
 bit [31:0] assoc[int];
-assoc.first(idx);   // get 1st index
-assoc.next(idx);    // get 2nd index
-assoc.delete(idx);  // delete idx element
+assoc.first(idx);       // get 1st index
+assoc.next(idx);        // get 2nd index
+assoc.delete(idx);      // delete idx element
+if (assoc.exists(idx))  // test key existence
 
 #------------------------------------------------------
 # array methods
@@ -74,7 +75,7 @@ int i;
 bit arr [10] = '{1, 1, 1, default:0};
 $display("%0d", arr.sum);                   // 1, since on 1 bit
 $display("%0d", arr.sum with(int'(item)));  // 3, since on 32 bits
-i = arr.sum;                                // 3, since on 32 bits (i is 32bits)
+i = arr.sum;                                // WARNING: does not work on irun, should be 3 since on 32 bits (i is 32bits)
 
 # other reduction are product, and, or, xor
 
@@ -283,6 +284,43 @@ else                            // not necessary customization
 # good practice: separate declaration and construction
 
 # a method in a class (task or function) uses automatic by default !
+
+#------------------------------------------------------
+# package
+#------------------------------------------------------
+# package can share:
+#   - parameters
+#   - data
+#   - type
+#   - task
+#   - function
+#   - sequence
+#   - property
+
+# cannot feature:
+#   - assign statement
+#   - hierarchical references
+
+package foo;
+  int toto = 4;
+endpackage
+package bar;
+  int toto = 6;
+  int tata = 5;
+endpackage
+
+module main();
+  import foo::*;
+  import bar::tata;
+
+  initial
+  begin
+    $display(toto);         // 4
+    $display(tata);         // 5
+    $display(bar::toto);    // 6
+    $finish;
+  end
+endmodule
 
 #------------------------------------------------------
 # vocabulary
@@ -778,13 +816,13 @@ event e1, e2;
 initial begin
   $display("1: before");
   -> e1;
-  wait(e2.triggered());
+  wait(e2.triggered);
   $display("1: after");
 end
 initial begin
   $display("2: before");
   -> e2;
-  wait(e1.triggered());
+  wait(e1.triggered);
   $display("2: after");
 end
 # displays:
@@ -1071,8 +1109,7 @@ $display(bad2.bad_crc); // bad_crc exists in obj
 #------------------------------------------------------
 # virtual methods
 #------------------------------------------------------
-# new() and post|pre_randomize() cannot be declared as virtual,
-# but handle.new() will always use the object's type new(), not the handle one
+# new() and post|pre_randomize() cannot be declared as virtual
 
 # signature (number and type of args) of virtual method in extended classes must be the same
 #

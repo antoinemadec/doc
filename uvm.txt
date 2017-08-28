@@ -1,0 +1,297 @@
+# vim: ft=conf
+
+
+#===============================================================
+# abstraction
+#===============================================================
+#------------------------------------------------------
+# main.v
+#------------------------------------------------------
+`include "uvm_macros.svh"
+`include "my_testbench_pkg.svh"
+
+module main();
+  import uvm_pkg::*;
+  import my_testbench_pkg::*;
+
+  dut_if dut_if0();
+  dut dut(.dif(dut_if0));
+...
+  initial
+  begin
+    uvm_config_db #(virtual dut_if)::set(null, "*", "dut_vif", dut_if0);
+    run_test("my_test");
+  end
+endmodule
+
+#------------------------------------------------------
+# my_testbencg_pkg.svh
+#------------------------------------------------------
+package my_testbench_pkg;
+  import uvm_pkg::*;
+  `include "my_sequence.svh"
+  `include "my_driver.svh"
+  `include "my_monitor.svh"
+  `include "my_scoreboard.svh"
+
+  class master_agent extends uvm_agent;
+  class slave_agent extends uvm_agent;
+  class my_env extends uvm_env;
+  class my_test extends uvm_test;
+endpackage
+
+#------------------------------------------------------
+# my_test
+#------------------------------------------------------
+class my_test extends uvm_test;
+  `uvm_component_utils(my_test)
+
+  my_env env;
+  master_sequence seq;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    env = my_env::type_id::create("env", this);
+  endfunction
+
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this);
+    seq = master_sequence::type_id::create("seq");
+    seq.start(env.m_agent.sequencer);
+    phase.drop_objection(this);
+  endtask
+endclass
+
+#------------------------------------------------------
+# my_env (my_test.env)
+#------------------------------------------------------
+class my_env extends uvm_env;
+  `uvm_component_utils(my_env)
+
+  master_agent m_agent;
+  slave_agent s_agent;
+  my_scoreboard scoreboard;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    m_agent    = master_agent::type_id::create("m_agent", this);
+    s_agent    = slave_agent::type_id::create("s_agent", this);
+    scoreboard = my_scoreboard::type_id::create("scoreboard", this);
+  endfunction
+
+  function void connect_phase(uvm_phase phase);
+    m_agent.m_monitor.item_collected_port.connect(scoreboard.item_collected_export_rx);
+    s_agent.s_monitor.item_collected_port.connect(scoreboard.item_collected_export_tx);
+  endfunction
+endclass
+
+#------------------------------------------------------
+# my_scoreboard (my_test.env.scoreboard)
+#------------------------------------------------------
+`uvm_analysis_imp_decl(_rx)
+`uvm_analysis_imp_decl(_tx)
+
+class my_scoreboard extends uvm_scoreboard;
+  `uvm_component_utils(my_scoreboard)
+
+  uvm_analysis_imp_rx#(my_transaction, my_scoreboard) item_collected_export_rx;
+  uvm_analysis_imp_tx#(my_transaction, my_scoreboard) item_collected_export_tx;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+    item_collected_export_rx = new("item_collected_export_rx", this);
+    item_collected_export_tx = new("item_collected_export_tx", this);
+  endfunction
+
+  function write_rx(my_transaction pkt);
+...
+  endfunction
+
+  function write_tx(my_transaction pkt);
+...
+  endfunction
+endclass
+
+#------------------------------------------------------
+# my_agent (my_test.env.agent)
+#------------------------------------------------------
+# slave is the same without sequencer
+class master_agent extends uvm_agent;
+  `uvm_component_utils(master_agent)
+
+  my_monitor #(0)                m_monitor;
+  master_driver                  m_driver;
+  uvm_sequencer#(my_transaction) sequencer;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    m_monitor = my_monitor#(0)::type_id::create("m_monitor", this);
+    m_driver = master_driver::type_id::create("m_driver", this);
+    sequencer = uvm_sequencer#(my_transaction)::type_id::create("sequencer", this);
+  endfunction
+
+  function void connect_phase(uvm_phase phase);
+    m_driver.seq_item_port.connect(sequencer.seq_item_export);
+  endfunction
+endclass
+
+#------------------------------------------------------
+# my_driver (my_test.env.agent.driver)
+#------------------------------------------------------
+class master_driver extends uvm_driver #(my_transaction);
+  `uvm_component_utils(master_driver)
+
+  virtual dut_if vif;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    if (!uvm_config_db #(virtual dut_if)::get(this, "", "dut_vif", vif))
+      `uvm_error("", "uvm_config_db::get failed");
+  endfunction
+
+  task run_phase(uvm_phase phase);
+...
+    forever
+    begin
+      seq_item_port.get_next_item(req);
+...
+      seq_item_port.item_done();
+    end
+  endtask
+endclass
+
+#------------------------------------------------------
+# my_monitor (my_test.env.agent.monitor)
+#------------------------------------------------------
+class my_monitor #(parameter PASSIVE=0) extends uvm_monitor;
+  `uvm_component_param_utils(my_monitor#(PASSIVE))
+
+  uvm_analysis_port #(my_transaction) item_collected_port;
+  virtual dut_if vif;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+    item_collected_port = new("item_collected_port", this);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    if (!uvm_config_db#(virtual dut_if)::get(this, "", "dut_vif", vif))
+      `uvm_error("", "uvm_config_db::get failed")
+  endfunction
+
+  task run_phase(uvm_phase phase);
+    forever @(posedge vif.clk)
+    begin
+      if (vif.rst_n)
+        # or "tx" if PASSIVE
+        rx = my_transaction::type_id::create("rx", this);
+...
+        item_collected_port.write(rx);
+      end
+    end
+  endtask
+endclass
+
+#------------------------------------------------------
+# my_sequence   (UVM object)
+#------------------------------------------------------
+class master_sequence extends uvm_sequence#(my_transaction);
+  `uvm_object_utils(master_sequence)
+
+  function new(string name = "");
+    super.new(name);
+  endfunction
+
+  task body;
+    my_transaction req;
+    req = my_transaction::type_id::create("req",,get_full_name());
+...
+      start_item(req);
+      if (!req.randomize())
+        `uvm_error("MASTER_SEQ", "could not randomize")
+      finish_item(req);
+...
+  endtask
+endclass
+
+#------------------------------------------------------
+# my_transaction    (UVM object)
+#------------------------------------------------------
+class my_transaction extends uvm_sequence_item;
+  `uvm_object_utils(my_transaction)
+
+  rand bit [31:0] data;
+
+  function new(string name = "");
+    super.new(name);
+  endfunction
+endclass
+
+
+#===============================================================
+# communication between classes
+#===============================================================
+#------------------------------------------------------
+# sequence - sequencer - driver
+#------------------------------------------------------
+# in test's run_phase
+seq.start(env.m_agent.sequencer);
+# in agent's connect_phase
+m_driver.seq_item_port.connect(sequencer.seq_item_export);
+# in agent's driver
+seq_item_port.get_next_item(req);
+...
+seq_item_port.item_done();
+# in sequence's body
+start_item(req);
+if (!req.randomize())
+  `uvm_error("MASTER_SEQ", "could not randomize")
+finish_item(req);
+
+#------------------------------------------------------
+# monitor - scoreboard
+#------------------------------------------------------
+# in monitor
+uvm_analysis_port #(my_transaction) item_collected_port;
+task run_phase(uvm_phase phase);
+...
+  # or "tx" if PASSIVE
+  item_collected_port.write(rx);
+...
+
+# in env's connect phase
+m_agent.m_monitor.item_collected_port.connect(scoreboard.item_collected_export_rx);
+s_agent.s_monitor.item_collected_port.connect(scoreboard.item_collected_export_tx);
+
+# in scoreboard
+`uvm_analysis_imp_decl(_rx)
+`uvm_analysis_imp_decl(_tx)
+class my_scoreboard extends uvm_scoreboard;
+  `uvm_component_utils(my_scoreboard)
+  uvm_analysis_imp_rx#(my_transaction, my_scoreboard) item_collected_export_rx;
+  uvm_analysis_imp_tx#(my_transaction, my_scoreboard) item_collected_export_tx;
+...
+  function write_rx(my_transaction pkt);
+...
+  function write_tx(my_transaction pkt);
+...
+
+#===============================================================
+# override a sequence_item
+#===============================================================
+# by instance
+my_transaction::type_id::set_inst_override(my_transaction_deadbeef::get_type(), "env.m_agent.sequencer.seq1.req");
+# by type
+my_transaction::type_id::set_type_override(my_transaction_deadbeef::get_type(), 1);
