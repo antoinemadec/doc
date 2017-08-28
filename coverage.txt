@@ -1,0 +1,19 @@
+> cat covfile.txt
+select_coverage -block -expr -fsm -toggle -module un2pctl_phy...    # match un2pctl_phy and all its decendent
+set_branch_scoring                                                  # block coverage: check true and false branch
+set_assign_scoring                                                  # enable scoring of continuous assignment
+set_expr_scoring                                                    # expression scoring: make sure each input of an expression was true and not true
+set_implicit_block_scoring -off                                     # don't score implicit else and default
+set_explicit_block_scoring -off                                     # don't score explicit default
+
+deselect_coverage -all module dti*
+
+
+
+> cat merge.txt
+imc -execcmd "merge output/cov_work/scope/test_sv* -run_order by_timestamp -out covall/"
+
+
+
+> cat run
+irun -f ... -covfile covfile.txt
