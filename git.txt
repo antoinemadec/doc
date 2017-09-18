@@ -21,3 +21,9 @@ git fetch URL                   # downloads commits that the remote has but are 
 git pull origin master          # git fetch URL; git merge origin
 git pull --rebase origin master # git fetch URL; git rebase origin
 git pull origin master          # push master on origin and update origin ref in local repo
+
+
+#---------------------------------------------------------------
+# misc
+#---------------------------------------------------------------
+git reflog                      # list latest changes updating tip of the branch
