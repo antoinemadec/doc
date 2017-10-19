@@ -274,7 +274,18 @@ a1: assert (bus.cb.grant == 2'b01)
 else                            // not necessary customization
   $display("Grant failed !");   // not necessary customization
 
-# concurrent assertions: TODO
+# concurrent assertions:
+#   - are checked throughout simulation
+#   - usually appear outside any initial or always blocks
+#     in modules, interfaces and programs
+property not_read_and_write;
+  not (Read && Write);
+endproperty
+assert property (not_read_and_write);
+# or
+assert property (!(Read && Write));
+
+# TODO: implication
 
 
 #===============================================================
