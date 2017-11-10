@@ -250,6 +250,9 @@ endclass
 seq.start(env.m_agent.sequencer);
 # in agent's connect_phase
 m_driver.seq_item_port.connect(sequencer.seq_item_export);
+#------------------------------
+# sequence -> driver (request)
+#------------------------------
 # in agent's driver
 seq_item_port.get_next_item(req);
 ...
@@ -259,6 +262,13 @@ start_item(req);
 if (!req.randomize())
   `uvm_error("MASTER_SEQ", "could not randomize")
 finish_item(req);
+#------------------------------
+# driver -> sequence (response)
+#------------------------------
+# in agent's driver
+seq_item_port.put_response(rsp);
+# in sequence's body
+get_response(rsp);
 
 #------------------------------------------------------
 # monitor - scoreboard
