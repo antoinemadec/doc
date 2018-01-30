@@ -301,7 +301,8 @@ class my_scoreboard extends uvm_scoreboard;
 #===============================================================
 # override a sequence_item
 #===============================================================
-# by instance
+# override only works when replacing base class with an extended class:
+#   - by instance
 my_transaction::type_id::set_inst_override(my_transaction_deadbeef::get_type(), "env.m_agent.sequencer.seq1.req");
-# by type
+#   - by type
 my_transaction::type_id::set_type_override(my_transaction_deadbeef::get_type(), 1);
