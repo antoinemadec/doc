@@ -329,27 +329,25 @@ endtask
 # drv
 task drv::run_phase(uvm_phase phase);
 ...
-  forever
-  begin
-    csq2ab_mxu_cache_tx rsp_q[$];
-    csq2ab_mxu_cache_tx rsp_tmp; // avoid to override rsp
-    fork
-      begin: command
-        seq_item_port.get(req);
-        rsp_tmp = csq2ab_mxu_cache_tx::type_id::create("rsp_tmp");
-        rsp_tmp.set_id_info(req); // copy transaction_id and sequence_id
-        rsp_tmp.do_copy(req);
-        rsp_q.push_back(rsp_tmp);
-        drive();
-      end
-      begin: data
-        wait_data();
-        rsp = rsp_q.pop_front();
-        rsp.data = vif.data;
-        seq_item_port.put(rsp);
-      end
-    join_any
-  end
+  fork
+    forever
+    begin: command
+      seq_item_port.get(req);
+      rsp_tmp = csq2ab_mxu_cache_tx::type_id::create("rsp");
+      rsp_tmp.set_id_info(req);
+      rsp_tmp.do_copy(req);
+      rsp_q.push_back(rsp_tmp);
+      `uvm_info(get_type_name(), {"req item\n",req.sprint}, UVM_HIGH)
+      drive();
+    end
+    forever
+    begin: data
+      wait(rsp_q.size() != 0);
+      rsp = rsp_q.pop_front();
+      fill_rsp();
+      seq_item_port.put(rsp);
+    end
+  join_any
 endtask : run_phase
 
 # doc
