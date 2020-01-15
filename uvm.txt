@@ -323,7 +323,9 @@ task seq::body();
   if ( !req.randomize() )
     `uvm_error(get_type_name(), "Failed to randomize transaction")
   finish_item(req);
-  get_response(rsp); // can use transaction_id in case of out of order response
+  get_response(rsp);
+  // out of order response, use:
+  // get_response(rsp, req.get_transaction_id());
 endtask
 
 # drv
@@ -353,3 +355,37 @@ endtask : run_phase
 # doc
 https://www.chipverify.com/uvm/driver-using-get-and-put
 https://www.doulos.com/knowhow/sysverilog/uvm/easier_uvm_guidelines/layering
+
+#------------------------------------------------------
+# mem backdoor access
+#------------------------------------------------------
+# mem/reg map models
+class my_uvm_mem extends uvm_mem;
+`uvm_object_utils(my_uvm_mem)
+  function new(string name = "");
+  super.new(name, 4*1024, 64, "RW", UVM_NO_COVERAGE);
+  endfunction
+endclass
+
+class my_uvm_reg_block extends uvm_reg_block;
+  `uvm_object_utils(my_uvm_reg_block)
+  my_uvm_mem mem;
+  function void build();
+    // Now define address mappings
+    default_map = create_map("default_map", 0, 8, UVM_LITTLE_ENDIAN);
+    mem = my_uvm_mem::type_id::create("mem");
+    mem.configure(this, "path.to.mem");
+    default_map.add_mem(mem, 0); // offset of 0
+    set_hdl_path_root("tb");
+    this.lock_model();
+  endfunction
+  function new(input string name="");
+    super.new(name, UVM_NO_COVERAGE);
+  endfunction
+endclass
+
+# in sequence
+m_my_uvm_reg_block.mem.read(status, i, rdata, UVM_BACKDOOR);
+
+# doc
+https://github.com/chiggs/UVM/blob/master/tests/70regs/05mem/20mem_access/test.sv
