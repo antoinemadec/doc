@@ -389,3 +389,5 @@ m_my_uvm_reg_block.mem.read(status, i, rdata, UVM_BACKDOOR);
 
 # doc
 https://github.com/chiggs/UVM/blob/master/tests/70regs/05mem/20mem_access/test.sv
+https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.2/html/files/reg/uvm_mem-svh.html#uvm_mem.read
+https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1b/html/files/reg/uvm_reg_block-svh.html#uvm_reg_block.get_name
