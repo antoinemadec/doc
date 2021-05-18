@@ -391,3 +391,30 @@ m_my_uvm_reg_block.mem.read(status, i, rdata, UVM_BACKDOOR);
 https://github.com/chiggs/UVM/blob/master/tests/70regs/05mem/20mem_access/test.sv
 https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.2/html/files/reg/uvm_mem-svh.html#uvm_mem.read
 https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1b/html/files/reg/uvm_reg_block-svh.html#uvm_reg_block.get_name
+
+#------------------------------------------------------
+# report
+#------------------------------------------------------
+# in test
+function void pre_abort();
+  report();
+endfunction : pre_abort
+
+function void report();
+  uvm_report_server svr;
+  bit test_passed = 1;
+  int errors_nb;
+
+  svr = uvm_report_server::get_server();
+  errors_nb = svr.get_severity_count(UVM_FATAL) + svr.get_severity_count(UVM_ERROR);
+
+  if ((errors_nb != 0) && (svr.get_id_count("EXPECTED ERROR") != errors_nb)) begin
+    test_passed = 0;
+  end
+
+  if (test_passed) begin
+    $write("UVM TEST PASSED\n");
+  else begin
+    $write("UVM TEST FAILED\n");
+  end
+endfunction : report
