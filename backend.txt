@@ -1,0 +1,15 @@
+# vim: ft=indentcolor
+
+synthese
+    input
+        floorplan
+        contraintes timing
+        RTL
+    output
+        netlist
+            choix des bonnes cellules
+            equilibrage du clock tree avec buffers etc
+        pre-placage
+    preuve formelle
+place & route
+    ajustements pour closer timing
