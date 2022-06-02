@@ -13,3 +13,10 @@ synthese
     preuve formelle
 place & route
     ajustements pour closer timing
+STA: static time analysis
+    tool: Prime TIme (Cadence)
+    input
+        final netlist
+        timing database
+    output
+        OK si timing passe apres poutrage dans tous les senses
