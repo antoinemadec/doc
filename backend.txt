@@ -20,3 +20,7 @@ STA: static time analysis
         timing database
     output
         OK si timing passe apres poutrage dans tous les senses
+
+vocabulaire
+    stdcell: optimized small piece of logic optimized by foundry
+    designware: Synopsys. IPs which are both RTL and hardmacros (synthesis)
