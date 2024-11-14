@@ -1,0 +1,6 @@
+# vim: ft=indentcolor
+
+planning
+    modify: 6-9month
+    new: 9-12month
+    NOC/performance: 12-18month
