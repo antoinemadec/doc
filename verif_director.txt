@@ -4,3 +4,15 @@ planning
     modify: 6-9month
     new: 9-12month
     NOC/performance: 12-18month
+
+team
+    forming -> storming -> performing
+
+pricing
+    emulation
+        rent: 300k$/yr
+        buy: 1M$
+    simulation
+        1000$/yr/license
+    VIPs
+    Siemens verif
