@@ -10,8 +10,9 @@ team
 
 pricing
     emulation
-        rent: 300k$/yr
-        buy: 1M$
+        rent:
+            zebu EP2 modules: $33k / BG*month
+            Palladium Z3: $80k / BG*month
     simulation
         1000$/yr/license
     VIPs
