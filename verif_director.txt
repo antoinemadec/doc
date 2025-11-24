@@ -1,9 +1,9 @@
 # vim: ft=indentcolor
 
 planning
-    modify: 6-9month
-    new: 9-12month
-    NOC/performance: 12-18month
+    modify: 6-9 man*month
+    new: 9-12 man*month
+    NOC/performance: 12-18 man*month
 
 team
     forming -> storming -> performing
