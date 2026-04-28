@@ -1,9 +1,5 @@
-Antoine Madec has over 13 years of experience in ASIC verification. He has worked both in the US and in Europe in various companies and roles such as technical lead, verification manager or application engineer.
-Antoine has a strong expertise in system level verification and emulation platforms development with a bias towards simplicity and efficiency rather than overengineered frameworks.
-He worked with customers like Microsoft Xbox, Tesla, Ampere or Bosh.
-Today, he is working at Axelera AI solving the verification challenges of the next generation of AI chips with his team.
+Antoine Madec is Director of Verification at Axelera AI, where he leads ASIC verification for next-generation AI accelerator chips.
+With over 15 years of experience spanning both sides of the Atlantic, he has held roles as technical lead, manager, and applications engineer at companies including Microsoft Xbox, Tesla, Ampere, and Bosch.
 
-
-Antoine Madec has over 13 years of experience in ASIC verification.
-His expertise is in system level verification and emulation platforms development with a bias towards simplicity and efficiency.
-Today, he is working at Axelera AI solving the verification challenges of the next generation of AI chips.
+Antoine specializes in system-level verification and the development of emulation platforms, with a practical philosophy centered on simplicity and efficiency over complexity.
+At Axelera AI, he drives verification strategy across multiple tape-outs, from architecture through silicon bring-up.
